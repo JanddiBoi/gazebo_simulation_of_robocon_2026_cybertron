@@ -1,0 +1,296 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="mecanum_robot">
+
+  <!-- ==================== CONFIGURABLE PARAMETERS ==================== -->
+  <xacro:property name="chassis_length" value="0.700"/>
+  <xacro:property name="chassis_width"  value="0.700"/>
+  <xacro:property name="chassis_height" value="0.100"/>
+  <xacro:property name="chassis_mass"   value="15.0"/>
+
+  <xacro:property name="wheel_radius"   value="0.050"/>
+  <xacro:property name="wheel_width"    value="0.050"/>
+  <xacro:property name="wheel_mass"     value="1.0"/>
+
+  <xacro:property name="wheel_x_offset" value="0.250"/>
+  <xacro:property name="wheel_y_offset" value="0.300"/>
+  <xacro:property name="wheel_z_offset" value="-0.010"/>
+
+  <!-- Center Pole & Camera Slider Dimensions -->
+  <xacro:property name="pole_radius"    value="0.015"/> <!-- 30mm diameter pole -->
+  <xacro:property name="pole_height"    value="1.100"/> <!-- Total vertical span -->
+  <xacro:property name="camera_length"  value="0.025"/>
+  <xacro:property name="camera_width"   value="0.090"/>
+  <xacro:property name="camera_height"  value="0.025"/>
+
+  <!-- LiDAR Dimensions -->
+  <xacro:property name="lidar_radius"   value="0.035"/>
+  <xacro:property name="lidar_height"   value="0.040"/>
+
+  <!-- ==================== MATERIALS ==================== -->
+  <material name="chassis_mat">
+    <color rgba="0.15 0.15 0.15 1.0"/>
+  </material>
+  <material name="wheel_mat">
+    <color rgba="0.8 0.2 0.2 1.0"/>
+  </material>
+  <material name="pole_mat">
+    <color rgba="0.7 0.7 0.7 1.0"/>
+  </material>
+  <material name="sensor_mat">
+    <color rgba="0.1 0.1 0.8 1.0"/>
+  </material>
+
+  <!-- ==================== INERTIA MACROS ==================== -->
+  <xacro:macro name="box_inertia" params="m x y z">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="${m}"/>
+      <inertia ixx="${(1/12) * m * (y*y + z*z)}" ixy="0.0" ixz="0.0"
+               iyy="${(1/12) * m * (x*x + z*z)}" iyz="0.0"
+               izz="${(1/12) * m * (x*x + y*y)}"/>
+    </inertial>
+  </xacro:macro>
+
+  <xacro:macro name="cylinder_inertia" params="m r h">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="${m}"/>
+      <inertia ixx="${(1/12) * m * (3*r*r + h*h)}" ixy="0.0" ixz="0.0"
+               iyy="${(1/12) * m * (3*r*r + h*h)}" iyz="0.0"
+               izz="${(1/2) * m * (r*r)}"/>
+    </inertial>
+  </xacro:macro>
+
+  <!-- ==================== BASE FOOTPRINT & LINK ==================== -->
+  <link name="base_footprint"/>
+
+  <joint name="base_footprint_joint" type="fixed">
+    <parent link="base_footprint"/>
+    <child link="base_link"/>
+    <origin xyz="0 0 ${wheel_radius - wheel_z_offset}" rpy="0 0 0"/>
+  </joint>
+
+  <link name="base_link">
+    <xacro:box_inertia m="${chassis_mass}" x="${chassis_length}" y="${chassis_width}" z="${chassis_height}"/>
+    <visual>
+      <geometry>
+        <box size="${chassis_length} ${chassis_width} ${chassis_height}"/>
+      </geometry>
+      <material name="chassis_mat"/>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="${chassis_length} ${chassis_width} ${chassis_height}"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- ==================== WHEEL MACRO & INSTANTIATION ==================== -->
+  <xacro:macro name="mecanum_wheel" params="prefix x_reflect y_reflect">
+    <joint name="${prefix}_wheel_joint" type="continuous">
+      <parent link="base_link"/>
+      <child link="${prefix}_wheel"/>
+      <origin xyz="${x_reflect * wheel_x_offset} ${y_reflect * wheel_y_offset} ${wheel_z_offset}" 
+              rpy="-1.57079632679 0 0"/>
+      <axis xyz="0 0 1"/>
+    </joint>
+
+    <link name="${prefix}_wheel">
+      <xacro:cylinder_inertia m="${wheel_mass}" r="${wheel_radius}" h="${wheel_width}"/>
+      <visual>
+        <geometry>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+        </geometry>
+        <material name="wheel_mat"/>
+      </visual>
+      <collision>
+        <geometry>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+        </geometry>
+      </collision>
+    </link>
+  </xacro:macro>
+
+  <xacro:mecanum_wheel prefix="front_left"  x_reflect="1"  y_reflect="1"/>
+  <xacro:mecanum_wheel prefix="front_right" x_reflect="1"  y_reflect="-1"/>
+  <xacro:mecanum_wheel prefix="rear_left"   x_reflect="-1" y_reflect="1"/>
+  <xacro:mecanum_wheel prefix="rear_right"  x_reflect="-1" y_reflect="-1"/>
+
+  <!-- ==================== CENTER VERTICAL POLE ==================== -->
+  <joint name="pole_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="pole_link"/>
+    <!-- Pole centered in X/Y, extending upwards from top of base plate -->
+    <origin xyz="0.0 0.0 ${(pole_height / 2) + (chassis_height / 2)}" rpy="0 0 0"/>
+  </joint>
+
+  <link name="pole_link">
+    <xacro:cylinder_inertia m="1.5" r="${pole_radius}" h="${pole_height}"/>
+    <visual>
+      <geometry>
+        <cylinder radius="${pole_radius}" length="${pole_height}"/>
+      </geometry>
+      <material name="pole_mat"/>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder radius="${pole_radius}" length="${pole_height}"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- ==================== SLIDING CAMERA (PRISMATIC JOINT) ==================== -->
+  <joint name="camera_slider_joint" type="prismatic">
+    <parent link="base_link"/>
+    <child link="camera_link"/>
+    <!-- Origin at 0.55m above base_link = 0.60m above ground (minimum height) -->
+    <origin xyz="0.0 0.0 0.550" rpy="0 0 0"/>
+    <!-- Move linearly along vertical Z-axis -->
+    <axis xyz="0 0 1"/>
+    <!-- lower="0.0" -> 0.6m ground height; upper="0.5" -> 1.1m ground height -->
+    <limit lower="0.0" upper="0.500" effort="50.0" velocity="0.1"/>
+  </joint>
+
+  <link name="camera_link">
+    <xacro:box_inertia m="0.2" x="${camera_length}" y="${camera_width}" z="${camera_height}"/>
+    <visual>
+      <geometry>
+        <box size="${camera_length} ${camera_width} ${camera_height}"/>
+      </geometry>
+      <material name="sensor_mat"/>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="${camera_length} ${camera_width} ${camera_height}"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="camera_optical_joint" type="fixed">
+    <parent link="camera_link"/>
+    <child link="camera_link_optical"/>
+    <origin xyz="0 0 0" rpy="-1.57079632679 0 -1.57079632679"/>
+  </joint>
+  <link name="camera_link_optical"/>
+
+  <!-- ==================== 2D LiDAR SENSOR ==================== -->
+  <joint name="lidar_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="lidar_link"/>
+    <origin xyz="0.0 0.0 ${(chassis_height / 2) + (lidar_height / 2)}" rpy="0 0 0"/>
+  </joint>
+
+  <link name="lidar_link">
+    <xacro:cylinder_inertia m="0.15" r="${lidar_radius}" h="${lidar_height}"/>
+    <visual>
+      <geometry>
+        <cylinder radius="${lidar_radius}" length="${lidar_height}"/>
+      </geometry>
+      <material name="sensor_mat"/>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder radius="${lidar_radius}" length="${lidar_height}"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- ==================== GAZEBO HARMONIC (ROS 2 JAZZY) PLUGINS ==================== -->
+
+  <!-- Mecanum Drive Plugin -->
+  <gazebo>
+    <plugin filename="gz-sim-mecanum-drive-system" name="gz::sim::systems::MecanumDrive">
+      <front_left_joint>front_left_wheel_joint</front_left_joint>
+      <front_right_joint>front_right_wheel_joint</front_right_joint>
+      <back_left_joint>rear_left_wheel_joint</back_left_joint>
+      <back_right_joint>rear_right_wheel_joint</back_right_joint>
+      <wheel_separation>${wheel_y_offset * 2}</wheel_separation>
+      <wheelbase>${wheel_x_offset * 2}</wheelbase>
+      <wheel_radius>${wheel_radius}</wheel_radius>
+      <!-- Keep these topics identical to the ROS-Gazebo bridge topics. -->
+      <topic>/cmd_vel</topic>
+      <odom_topic>/odom</odom_topic>
+      <tf_topic>/tf</tf_topic>
+      <frame_id>odom</frame_id>
+      <child_frame_id>base_footprint</child_frame_id>
+    </plugin>
+  </gazebo>
+
+  <!-- Joint Position Controller for Prismatic Camera Slider -->
+  <gazebo>
+    <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
+      <joint_name>camera_slider_joint</joint_name>
+      <topic>/camera_height_cmd</topic>
+      <p_gain>1000.0</p_gain>
+      <i_gain>10.0</i_gain>
+      <d_gain>50.0</d_gain>
+    </plugin>
+  </gazebo>
+
+  <!-- Joint State Publisher: required for robot_state_publisher to broadcast TF
+       for every non-fixed joint (the 4 wheel joints + camera_slider_joint).
+       Without this, camera_link/camera_link_optical and all wheel links have
+       no transform to base_link and never appear in the TF tree. -->
+  <gazebo>
+    <plugin filename="gz-sim-joint-state-publisher-system" name="gz::sim::systems::JointStatePublisher">
+      <topic>joint_states</topic>
+    </plugin>
+  </gazebo>
+
+  <!-- LiDAR Plugin -->
+  <gazebo reference="lidar_link">
+    <sensor type="gpu_lidar" name="lidar_sensor">
+      <pose>0 0 0 0 0 0</pose>
+      <always_on>true</always_on>
+      <visualize>true</visualize>
+      <update_rate>10</update_rate>
+      <topic>scan</topic>
+      <gz_frame_id>lidar_link</gz_frame_id>
+      <lidar>
+        <scan>
+          <horizontal>
+            <samples>360</samples>
+            <resolution>1</resolution>
+            <min_angle>-3.14159265359</min_angle>
+            <max_angle>3.14159265359</max_angle>
+          </horizontal>
+        </scan>
+        <range>
+          <min>0.12</min>
+          <max>12.0</max>
+          <resolution>0.01</resolution>
+        </range>
+      </lidar>
+    </sensor>
+  </gazebo>
+
+  <!-- Depth Camera Plugin -->
+  <gazebo reference="camera_link">
+    <sensor type="rgbd_camera" name="depth_camera_sensor">
+      <always_on>true</always_on>
+      <update_rate>30</update_rate>
+      <topic>camera</topic>
+      <gz_frame_id>camera_link_optical</gz_frame_id>
+      <camera>
+        <horizontal_fov>1.0472</horizontal_fov>
+        <image>
+          <width>1920</width>
+          <height>1080</height>
+          <format>R8G8B8</format>
+        </image>
+        <clip>
+          <near>0.1</near>
+          <far>10.0</far>
+        </clip>
+      </camera>
+    </sensor>
+  </gazebo>
+
+  <!-- NOTE: the gz-sim-sensors-system plugin is intentionally NOT declared here.
+       It is already loaded once at the world level in robocon2027_world.sdf.
+       Declaring it again here (in a <gazebo> block with no `reference`) makes it
+       load a SECOND time as a world plugin once this robot is spawned, which
+       creates two competing render-engine scenes named "scene" and segfaults
+       Gazebo's SensorsPrivate::RenderThread. Keep it defined in the world file only. -->
+
+</robot>

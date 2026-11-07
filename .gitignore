@@ -1,0 +1,14 @@
+# ROS 2 / colcon generated output
+/build/
+/install/
+/log/
+
+# Simulation recordings and exported videos
+/robot_run/
+*.mcap
+*.db3
+
+# Local agent and cloud configuration
+/.agents/
+/.aws/
+/.codex/

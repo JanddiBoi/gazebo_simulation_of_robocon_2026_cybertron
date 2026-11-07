@@ -1,0 +1,10 @@
+floors:
+  1: {map: "maps/robocon_level_ground.yaml"}
+  2: {map: "maps/robocon_level_1.yaml"}
+  3: {map: "maps/robocon_level_2.yaml"}
+
+transitions:
+  lift_A:
+    1: {x: 4.2, y: 1.0, yaw: 0.0, floor_pose: {x: 4.2, y: 1.0, z: 0.0}}
+    2: {x: 4.2, y: 1.0, yaw: 0.0, floor_pose: {x: 4.2, y: 1.0, z: 4.0}}
+    3: {x: 4.2, y: 1.0, yaw: 0.0, floor_pose: {x: 4.2, y: 1.0, z: 8.0}}
